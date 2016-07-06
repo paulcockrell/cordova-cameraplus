@@ -14,10 +14,7 @@ import android.graphics.Bitmap.Config;
 import android.graphics.Matrix;
 import android.graphics.Point;
 import android.graphics.SurfaceTexture;
-<<<<<<< HEAD
 import android.graphics.YuvImage;
-=======
->>>>>>> 3454cd769ff96115b255ddbd04aa0d40c5b40025
 import android.hardware.Camera;
 import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
@@ -703,24 +700,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
 
 		newImageNeeded = false;
 
-<<<<<<< HEAD
                 /*
-=======
-		//Log.i("onPreviewFrame", "Data Size >> " + String.valueOf(data.length) + " >> " + String.valueOf(this.configManager.cameraResolution.x) + "x" + this.configManager.cameraResolution.y);
-
-		// Alternative 1 (If decodable by BitmapFactory)
-		/*
-		try {
-		   Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0,data.length);
-		   bitmap.compress(Bitmap.CompressFormat.JPEG, 75, outputStream);
-		} 
-		catch (Exception e) 
-		{
-		   e.printStackTrace();
-		}
-		*/
-
->>>>>>> 3454cd769ff96115b255ddbd04aa0d40c5b40025
 		try
 		{
 			int w = this.configManager.cameraResolution.x;
@@ -759,7 +739,6 @@ final class PreviewCallback implements Camera.PreviewCallback {
 		} catch (Exception e) {
 			Log.e("onPreviewFrame", "Exception >> " + e.getMessage());
 		}
-<<<<<<< HEAD
                 */
                 try {
                    synchronized (this) {
@@ -769,13 +748,10 @@ final class PreviewCallback implements Camera.PreviewCallback {
                 catch(Exception e) {
                     Log.e("onPreviewFrame", "Exception: " + e.getMessage());
                 }
-=======
->>>>>>> 3454cd769ff96115b255ddbd04aa0d40c5b40025
         		  		
 		updateFps();
 	}
 
-<<<<<<< HEAD
         private byte[] getFramePicture(byte[] data, Camera camera) {
             Camera.Parameters parameters = camera.getParameters();
             int format = parameters.getPreviewFormat();
@@ -797,8 +773,6 @@ final class PreviewCallback implements Camera.PreviewCallback {
             return data;
         }
 
-=======
->>>>>>> 3454cd769ff96115b255ddbd04aa0d40c5b40025
 	private void updateFps() {
 		if (lasttime == 0) {
 			lasttime = System.currentTimeMillis();
@@ -841,9 +815,4 @@ final class PreviewCallback implements Camera.PreviewCallback {
 	        }
 	    }
 	}
-<<<<<<< HEAD
-
 }
-=======
-}
->>>>>>> 3454cd769ff96115b255ddbd04aa0d40c5b40025

@@ -101,11 +101,6 @@ public class CameraPlus extends CordovaPlugin {
         
         	String imageEncoded = Base64.encodeToString(bArray,Base64.NO_WRAP);
 
-<<<<<<< HEAD
-=======
-        	//Log.e("LOOK", imageEncoded);       
-
->>>>>>> 3454cd769ff96115b255ddbd04aa0d40c5b40025
         	callbackContext.success( imageEncoded );
         }
         else
