@@ -641,6 +641,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
     private int previewWidth;
     private int previewHeight;
 
+    public static String TAG = "PreviewCallback";
 
     PreviewCallback(CameraConfigurationManager configManager, CameraManager parent) {
         this.configManager = configManager;
