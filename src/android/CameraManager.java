@@ -10,6 +10,10 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Style;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.ImageFormat;
@@ -755,7 +759,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
 
             // Compress current 'Bitmap' to 'output' as JPEG format
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            bmp.compress(CompressFormat.JPEG, 50, outputStream);
+            bmp.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
 
             return outputStream.toByteArray();
         }
