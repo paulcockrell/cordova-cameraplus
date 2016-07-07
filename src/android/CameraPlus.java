@@ -31,7 +31,7 @@ public class CameraPlus extends CordovaPlugin {
 
     /** Common tag used for logging statements. */
     private static final String LOGTAG = "CameraPlus";
-    
+
     /** Cordova Actions. */
 
     private static final String ACTION_START_CAMERA = "startCamera";
@@ -64,9 +64,9 @@ public class CameraPlus extends CordovaPlugin {
             Log.d(LOGTAG, String.format("Invalid action passed: %s", action));
             result = new PluginResult(Status.INVALID_ACTION);
         }
-        
+
         if(result != null) callbackContext.sendPluginResult( result );
-        
+
         return true;
     }
 
@@ -92,22 +92,22 @@ public class CameraPlus extends CordovaPlugin {
 
     private PluginResult getJpegImage(JSONArray inputs, CallbackContext callbackContext) {
     	Log.w(LOGTAG, "getJpegImage");
-        
+
         byte[] bArray = CameraManager.lastFrame();
-        
+
         if (bArray != null)
         {
         	Log.w(LOGTAG, "Received " + String.valueOf(bArray.length) + " bytes...");
-        
+
         	String imageEncoded = Base64.encodeToString(bArray,Base64.NO_WRAP);
 
         	callbackContext.success( imageEncoded );
         }
         else
         {
-        	callbackContext.error(0);        	
+        	callbackContext.error(0);
         }
-        
+
         return null;
     }
 
@@ -135,27 +135,25 @@ public class CameraPlus extends CordovaPlugin {
         }
 
         try {
-			CameraManager.get().openDriver();
-		} catch (IOException e) {
-			Log.w(LOGTAG, "Exception in openDriver");
-		}
-        
-        //CameraManager.get().startPreview();        
+			      CameraManager.get().openDriver();
+		    } catch (IOException e) {
+			      Log.w(LOGTAG, "Exception in openDriver");
+		    }
 
         return true;
     }
-    
+
     private boolean stopCapture(){
         Log.w(LOGTAG, "stopCapture");
-                
-        CameraManager.get().stopPreview();                
-        
+
+        CameraManager.get().stopPreview();
+
         try {
-			CameraManager.get().closeDriver();
-		} catch (Exception e) {
-			Log.w(LOGTAG, "Exception in closeDriver");
-		}
-        
+			      CameraManager.get().closeDriver();
+		    } catch (Exception e) {
+			      Log.w(LOGTAG, "Exception in closeDriver");
+		    }
+
         return true;
     }
 
