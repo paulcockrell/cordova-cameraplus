@@ -771,7 +771,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
             //data.reset();
 
             // Compress current 'Bitmap' to 'output' as JPEG format
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            outputStream = new ByteArrayOutputStream();
             bmp.compress(Bitmap.CompressFormat.JPEG, 50, outputStream);
 
             return outputStream.toByteArray();
