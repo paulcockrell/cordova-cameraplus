@@ -749,12 +749,6 @@ final class PreviewCallback implements Camera.PreviewCallback {
             // Decode the JPEG byte array from 'output' to 'Bitmap' object
             Bitmap immutableBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
             Bitmap bmp = immutableBitmap.copy(Bitmap.Config.ARGB_8888, true);
-            if (bmp == null) {
-                Log.i(TAG, "XXX 1");
-            }
-            else {
-                Log.i(TAG, "XXX 2");
-            }
 
             // Use 'Canvas' to draw text onto 'Bitmap'
             Canvas cv = new Canvas(bmp);
