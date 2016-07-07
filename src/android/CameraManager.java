@@ -10,6 +10,7 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.ImageFormat;
 import android.graphics.Bitmap.Config;
@@ -717,7 +718,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
 
     }
 
-    private byte[] getFramePicture(byte[] data, Camera camera) {
+    private byte[] getFramePictureOrg(byte[] data, Camera camera) {
         //YUV formats require conversion
         if (previewFormat == ImageFormat.NV21 || previewFormat == ImageFormat.YUY2 || previewFormat == ImageFormat.NV16) {
             // Get the YuV image
@@ -726,6 +727,36 @@ final class PreviewCallback implements Camera.PreviewCallback {
             Rect rect = new Rect(0, 0, previewWidth, previewHeight);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             yuvImage.compressToJpeg(rect, 10, outputStream);
+            return outputStream.toByteArray();
+        }
+
+        return data;
+    }
+
+    private byte[] getFramePicture(byte[] data, Camera camera) {
+        if (previewFormat == ImageFormat.NV21 || previewFormat == ImageFormat.YUY2 || previewFormat == ImageFormat.NV16) {
+            // Decode the JPEG byte array from 'output' to 'Bitmap' object
+            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.size());
+
+            // Use 'Canvas' to draw text onto 'Bitmap'
+            Canvas cv = new Canvas(bmp);
+
+            // Prepare 'Paint' for text drawing
+            Paint mPaint = new Paint();
+            mPaint.setColor( Color.RED );
+            mPaint.setStyle( Style.STROKE );
+            mPaint.setTextSize(20);
+
+            // Draw text on the 'Bitmap' image
+            cv.drawText("TEXT To SHOW", 10, 10, mPaint);
+
+            // Reset the stream of 'output' for output writing.
+            data.reset();
+
+            // Compress current 'Bitmap' to 'output' as JPEG format
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            bmp.compress(CompressFormat.JPEG, 50, outputStream);
+
             return outputStream.toByteArray();
         }
 
