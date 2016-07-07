@@ -317,9 +317,9 @@ public final class CameraManager {
             previewCallback.setRotation(targetRotation);
 
             Camera.Parameters parameters = camera.getParameters();
-            previewFormat = parameters.getPreviewFormat();
-            previewWidth = parameters.getPreviewSize().width;
-            previewHeight = parameters.getPreviewSize().height;
+            int previewFormat = parameters.getPreviewFormat();
+            int previewWidth = parameters.getPreviewSize().width;
+            int previewHeight = parameters.getPreviewSize().height;
 
             previewCallback.setPreviewDimensions(previewWidth, previewHeight);
             previewCallback.setPreviewFormat(previewFormat);
