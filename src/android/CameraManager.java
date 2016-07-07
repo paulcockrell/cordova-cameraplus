@@ -13,8 +13,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Style;
 import android.graphics.Paint;
+import android.graphics.Paint.Style;
 import android.graphics.Rect;
 import android.graphics.ImageFormat;
 import android.graphics.Bitmap.Config;
@@ -755,7 +755,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
             cv.drawText("TEXT To SHOW", 10, 10, mPaint);
 
             // Reset the stream of 'output' for output writing.
-            data.reset();
+            //data.reset();
 
             // Compress current 'Bitmap' to 'output' as JPEG format
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
