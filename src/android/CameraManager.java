@@ -722,9 +722,9 @@ final class PreviewCallback implements Camera.PreviewCallback {
         //YUV formats require conversion
         if (format == ImageFormat.NV21 || format == ImageFormat.YUY2 || format == ImageFormat.NV16) {
             // Get the YuV image
-            YuvImage yuvImage = new YuvImage(data, format, previewWidth, previewHeight, null);
+            YuvImage yuvImage = new YuvImage(data, format, this.previewWidth, this.previewHeight, null);
             // Convert YuV to Jpeg
-            Rect rect = new Rect(0, 0, previewWidth, previewHeight);
+            Rect rect = new Rect(0, 0, this.previewWidth, this.previewHeight);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             yuvImage.compressToJpeg(rect, 80, outputStream);
             return outputStream.toByteArray();
