@@ -742,10 +742,10 @@ final class PreviewCallback implements Camera.PreviewCallback {
             // Decode the JPEG byte array from 'output' to 'Bitmap' object
             Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
             if (bmp == null) {
-                Log.d("XXX bmp is null");
+                Log.i(TAG, "XXX 1");
             }
             else {
-                Log.d("XXX bmp is NOT null");
+                Log.i(TAG, "XXX 2");
             }
 
             // Use 'Canvas' to draw text onto 'Bitmap'
