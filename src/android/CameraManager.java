@@ -747,7 +747,8 @@ final class PreviewCallback implements Camera.PreviewCallback {
             yuvImage.compressToJpeg(rect, 10, outputStream);
             byte[] imageBytes = outputStream.toByteArray();
             // Decode the JPEG byte array from 'output' to 'Bitmap' object
-            Bitmap bmp = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+            Bitmap immutableBitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+            Bitmap bmp = immutableBitmap.copy(Bitmap.Config.ARGB_8888, true)
             if (bmp == null) {
                 Log.i(TAG, "XXX 1");
             }
