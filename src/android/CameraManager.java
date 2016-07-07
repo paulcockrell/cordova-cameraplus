@@ -383,34 +383,11 @@ public final class CameraManager {
     public int setCameraDisplayOrientation(int cameraId, android.hardware.Camera camera) {
 
          int result = getDisplayOrientation(cameraId);
-
-         // Doesn't work for previewCallback, only displayed output :s
-
          camera.setDisplayOrientation(result);
-
-         //Camera.Parameters parameters = camera.getParameters();
-         //parameters.set("orientation", "portrait");
-         //parameters.setRotation(result);
 
          return result;
      }
 
-    public Bitmap renderCroppedGreyscaleBitmap(byte[] data, int width, int height) {
-        int[] pixels = new int[width * height];
-        byte[] yuv = data;
-        int row = 0;
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int grey = yuv[row + x] & 0xff;
-                pixels[row + x] = 0xFF000000 | (grey * 0x00010101);
-            }
-            row += width;
-        }
-
-        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        bitmap.setPixels(pixels, 0, width, 0, 0, width, height);
-        return bitmap;
-    }
 }
 
 final class CameraConfigurationManager {
@@ -421,8 +398,6 @@ final class CameraConfigurationManager {
     public static Point screenResolution;
     public Point cameraResolution;
     private int previewFormat;
-    private int previewWidth;
-    private int previewHeight;
     private String previewFormatString;
 
     CameraConfigurationManager(Context context) {
@@ -435,8 +410,6 @@ final class CameraConfigurationManager {
     void initFromCameraParameters(Camera camera) {
         Camera.Parameters parameters = camera.getParameters();
         previewFormat = parameters.getPreviewFormat();
-        previewWidth = parameters.getPreviewSize().width;
-        previewHeight = parameters.getPreviewSize().height;
         previewFormatString = parameters.get("preview-format");
         Log.d(TAG, "Default preview format: " + previewFormat + '/' + previewFormatString);
         WindowManager manager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
@@ -752,7 +725,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
             // Convert YuV to Jpeg
             Rect rect = new Rect(0, 0, previewWidth, previewHeight);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            yuvImage.compressToJpeg(rect, 80, outputStream);
+            yuvImage.compressToJpeg(rect, 10, outputStream);
             return outputStream.toByteArray();
         }
 
