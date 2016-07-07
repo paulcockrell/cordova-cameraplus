@@ -736,7 +736,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
     private byte[] getFramePicture(byte[] data, Camera camera) {
         if (previewFormat == ImageFormat.NV21 || previewFormat == ImageFormat.YUY2 || previewFormat == ImageFormat.NV16) {
             // Decode the JPEG byte array from 'output' to 'Bitmap' object
-            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.size());
+            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
 
             // Use 'Canvas' to draw text onto 'Bitmap'
             Canvas cv = new Canvas(bmp);
