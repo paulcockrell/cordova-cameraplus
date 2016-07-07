@@ -314,8 +314,15 @@ public final class CameraManager {
             if (android.os.Build.VERSION.SDK_INT >= 9) {
                 targetRotation = getDisplayOrientation(0);
             }
-
             previewCallback.setRotation(targetRotation);
+
+            Camera.Parameters parameters = camera.getParameters();
+            previewFormat = parameters.getPreviewFormat();
+            previewWidth = parameters.getPreviewSize().width;
+            previewHeight = parameters.getPreviewSize().height;
+
+            previewCallback.setPreviewDimensions(previewWidth, previewHeight);
+            previewCallback.setPreviewFormat(previewFormat);
 
             if (DEBUG) Log.i(TAG, "Setting Standard Callback");
             camera.setPreviewCallback(previewCallback);
@@ -652,6 +659,10 @@ final class PreviewCallback implements Camera.PreviewCallback {
     private boolean newImageNeeded;
     private long lastImageRequest = 0;
 
+    private int previewFormat;
+    private int previewWidth;
+    private int previewHeight;
+
 
     PreviewCallback(CameraConfigurationManager configManager, CameraManager parent) {
         this.configManager = configManager;
@@ -665,6 +676,21 @@ final class PreviewCallback implements Camera.PreviewCallback {
     public boolean setRotation(int rotation)
     {
         this.imageRotation = rotation;
+
+        return true;
+    }
+
+    public boolean setPreviewDimensions(int width, int height)
+    {
+        this.previewWidth = width;
+        this.previewHeight = height;
+
+        return true;
+    }
+
+    public boolean setPreviewFormat(int format)
+    {
+        this.previewFormat = format;
 
         return true;
     }
@@ -722,9 +748,9 @@ final class PreviewCallback implements Camera.PreviewCallback {
         //YUV formats require conversion
         if (format == ImageFormat.NV21 || format == ImageFormat.YUY2 || format == ImageFormat.NV16) {
             // Get the YuV image
-            YuvImage yuvImage = new YuvImage(data, format, this.previewWidth, this.previewHeight, null);
+            YuvImage yuvImage = new YuvImage(data, format, previewWidth, previewHeight, null);
             // Convert YuV to Jpeg
-            Rect rect = new Rect(0, 0, this.previewWidth, this.previewHeight);
+            Rect rect = new Rect(0, 0, previewWidth, previewHeight);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             yuvImage.compressToJpeg(rect, 80, outputStream);
             return outputStream.toByteArray();
