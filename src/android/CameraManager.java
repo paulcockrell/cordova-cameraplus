@@ -756,11 +756,11 @@ final class PreviewCallback implements Camera.PreviewCallback {
             // Prepare 'Paint' for text drawing
             Paint mPaint = new Paint();
             mPaint.setColor( Color.WHITE );
-            mPaint.setStyle( Style.STROKE );
+            mPaint.setStyle( Style.FILL_AND_STROKE );
             mPaint.setTextSize(80);
 
             // Draw text on the 'Bitmap' image
-            cv.drawText("TEXT To SHOW", 50, 50, mPaint);
+            cv.drawText("Paul rulez OK!", 100, 100, mPaint);
 
             // Reset the stream of 'output' for output writing.
             //data.reset();
