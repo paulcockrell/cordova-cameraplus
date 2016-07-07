@@ -740,8 +740,14 @@ final class PreviewCallback implements Camera.PreviewCallback {
 
     private byte[] getFramePicture(byte[] data, Camera camera) {
         if (previewFormat == ImageFormat.NV21 || previewFormat == ImageFormat.YUY2 || previewFormat == ImageFormat.NV16) {
+            YuvImage yuvImage = new YuvImage(data, previewFormat, previewWidth, previewHeight, null);
+            // Convert YuV to Jpeg
+            Rect rect = new Rect(0, 0, previewWidth, previewHeight);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            yuvImage.compressToJpeg(rect, 10, outputStream);
+            bytes[] imageBytes = outputStream.toByteArray();
             // Decode the JPEG byte array from 'output' to 'Bitmap' object
-            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
+            Bitmap bmp = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
             if (bmp == null) {
                 Log.i(TAG, "XXX 1");
             }
