@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.grafika;
+package com.moonware.cameraplus;
 
 import android.media.MediaCodec;
 import android.util.Log;
