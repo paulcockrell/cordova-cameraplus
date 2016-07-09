@@ -9,6 +9,7 @@ import java.net.SocketException;
 import java.util.Enumeration;
 
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.CordovaArgs;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PluginResult;
 import org.apache.cordova.PluginResult.Status;
@@ -161,10 +162,9 @@ public class CameraPlus extends CordovaPlugin {
         return true;
     }
 
-    private PluginResult setText(JSONArray inputs, CallbackContext callbackContext) {
+    private PluginResult setText(CordovaArgs args, CallbackContext callbackContext) {
 
-        JSONObject obj = inputs.getJsonObject(0);
-        String text = obj.getString("text");
+        String text = args.getString(0);
         boolean res = CameraManager.setText(text);
 
         if (res == true)
