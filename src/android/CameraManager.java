@@ -191,6 +191,8 @@ public final class CameraManager {
 
         final int fBestIndex = bestIndex;
 
+        cp.setRecordingHint(true);
+
         cp.setZoom(fBestIndex);
         camera.setParameters(cp);
     }
