@@ -191,6 +191,7 @@ public class CircularEncoder {
      * frames during this time.
      */
     public void saveVideo(File outputFile) {
+        if (VERBOSE) Log.d(TAG, "SAVE GODDAMIT!");
         Handler handler = mEncoderThread.getHandler();
         handler.sendMessage(handler.obtainMessage(
                 EncoderThread.EncoderHandler.MSG_SAVE_VIDEO, outputFile));

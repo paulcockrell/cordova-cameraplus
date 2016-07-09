@@ -54,7 +54,7 @@ public final class CameraManager {
     private static final int DESIRED_PREVIEW_FPS = 15;
 
     public static boolean DEBUG = true;
-    public static String TAG = "CameraManager";
+    public static String TAG = "XXX CameraManager";
 
     private static float mSecondsOfVideo;
     private static File mOutputFile;
@@ -173,6 +173,7 @@ public final class CameraManager {
         mHandler = new MainHandler(cameraManager);
 
         mOutputFile = new File(Environment.getDataDirectory(), "/data/" + TAG + "/continuous-capture.mp4");
+        Log.i(TAG, "Setting mOutputFile to " + mOutputFile);
         mSecondsOfVideo = 0.0f;
     }
 
@@ -446,6 +447,7 @@ public final class CameraManager {
     }
 
     public void saveVideo() {
+        if (DEBUG) Log.i(TAG, "save video");
         mCircEncoder.saveVideo(mOutputFile);
     }
 
