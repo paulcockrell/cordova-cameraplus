@@ -60,7 +60,7 @@ public final class CameraManager {
     private static File mOutputFile;
     private static MainHandler mHandler;
 
-    private CircularEncoder mCircEncoder;
+    public CircularEncoder mCircEncoder;
     private int mCameraPreviewThousandFps;
 
     /**
