@@ -54,12 +54,13 @@ public final class CameraManager {
 
     public static boolean DEBUG = true;
     public static String TAG = "CameraManager";
+    
+    private static float mSecondsOfVideo;
+    private static File mOutputFile;
 
     private CircularEncoder mCircEncoder;
     private int mCameraPreviewThousandFps;
     private MainHandler mHandler;
-    private float mSecondsOfVideo;
-    private File mOutputFile;
 
     /**
     * Custom message handler for main UI thread.
@@ -156,7 +157,6 @@ public final class CameraManager {
 
         mOutputFile = new File(getFilesDir(), "continuous-capture.mp4");
         mSecondsOfVideo = 0.0f;
-
     }
 
     public static CameraManager get() {
