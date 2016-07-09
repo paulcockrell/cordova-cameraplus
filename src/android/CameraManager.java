@@ -27,6 +27,7 @@ import android.hardware.Camera.Parameters;
 import android.hardware.Camera.Size;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
@@ -51,6 +52,7 @@ public final class CameraManager {
     public static boolean DEBUG = true;
     public static String TAG = "CameraManager";
 
+    private CircularEncoder mCircEncoder;
     private int mCameraPreviewThousandFps;
     private MainHandler mHandler;
     private float mSecondsOfVideo;
@@ -159,6 +161,11 @@ public final class CameraManager {
         if (cameraManager == null) {
             cameraManager = new CameraManager(context);
         }
+        mHandler = new MainHandler(this);
+
+        mOutputFile = new File(getFilesDir(), "continuous-capture.mp4");
+        mSecondsOfVideo = 0.0f;
+
     }
 
     public static CameraManager get() {
