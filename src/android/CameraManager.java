@@ -396,7 +396,7 @@ public final class CameraManager {
      }
 
      public static boolean setText(String text) {
-        cameraManager.previewCallback.setText(text);
+        return cameraManager.previewCallback.setText(text);
      }
 
 }
