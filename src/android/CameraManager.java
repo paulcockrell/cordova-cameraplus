@@ -2,9 +2,11 @@ package com.moonware.cameraplus;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.File;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.lang.ref.WeakReference;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -48,6 +50,7 @@ public final class CameraManager {
 
     public static int mDesiredWidth = 1280;
     public static int mDesiredHeight = 720;
+    private static final int DESIRED_PREVIEW_FPS = 15;
 
     public static boolean DEBUG = true;
     public static String TAG = "CameraManager";
@@ -56,6 +59,7 @@ public final class CameraManager {
     private int mCameraPreviewThousandFps;
     private MainHandler mHandler;
     private float mSecondsOfVideo;
+    private File mOutputFile;
 
     /**
     * Custom message handler for main UI thread.
@@ -98,20 +102,7 @@ public final class CameraManager {
 
             switch (msg.what) {
                 case MSG_BLINK_TEXT: {
-                    TextView tv = (TextView) activity.findViewById(R.id.recording_text);
-
-                    // Attempting to make it blink by using setEnabled() doesn't work --
-                    // it just changes the color.  We want to change the visibility.
-                    int visibility = tv.getVisibility();
-                    if (visibility == View.VISIBLE) {
-                        visibility = View.INVISIBLE;
-                    } else {
-                        visibility = View.VISIBLE;
-                    }
-                    tv.setVisibility(visibility);
-
-                    int delay = (visibility == View.VISIBLE) ? 1000 : 200;
-                    sendEmptyMessageDelayed(MSG_BLINK_TEXT, delay);
+                    // We wont use this anymore
                     break;
                 }
                 case MSG_FRAME_AVAILABLE: {
@@ -427,12 +418,11 @@ public final class CameraManager {
             camera.setPreviewCallback(previewCallback);
 
             try {
-                mCircEncoder = new CircularEncoder(VIDEO_WIDTH, VIDEO_HEIGHT, 600000,
+                mCircEncoder = new CircularEncoder(mDesiredWidth, mDesiredHeight, 600000,
                 mCameraPreviewThousandFps / 1000, 7, mHandler);
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
             }
-
 
             previewing = true;
         }
