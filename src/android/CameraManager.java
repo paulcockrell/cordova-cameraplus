@@ -73,10 +73,10 @@ public final class CameraManager {
         public static final int MSG_FILE_SAVE_COMPLETE = 2;
         public static final int MSG_BUFFER_STATUS = 3;
 
-        private WeakReference<ContinuousCaptureActivity> mWeakActivity;
+        private WeakReference<CameraManager> mWeakActivity;
 
-        public MainHandler(ContinuousCaptureActivity activity) {
-            mWeakActivity = new WeakReference<ContinuousCaptureActivity>(activity);
+        public MainHandler(CameraManager activity) {
+            mWeakActivity = new WeakReference<CameraManager>(activity);
         }
 
         // CircularEncoder.Callback, called on encoder thread
@@ -94,7 +94,7 @@ public final class CameraManager {
 
         @Override
         public void handleMessage(Message msg) {
-            ContinuousCaptureActivity activity = mWeakActivity.get();
+            CameraManager activity = mWeakActivity.get();
             if (activity == null) {
                 Log.d(TAG, "Got message for dead activity");
                 return;
