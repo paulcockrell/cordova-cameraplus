@@ -39,8 +39,19 @@ cameraplus_exports.onCapture = function(success, error) {
 	//TODO: Overwrite this methods for receiving the content
 };
 
-cameraPlus_exports.setText = function(text, success, error) {
-  exec(success, error, "CameraPlus", "setText", [text]);
+cameraPlus_exports.setText = function(options, success, error) {
+  var defaults = {
+    'text': 'No text given'
+  };
+
+	// Merge optional settings into defaults.
+	for (var key in defaults) {
+		if (typeof options[key] !== 'undefined') {
+			defaults[key] = options[key];
+		}
+	}
+
+  exec(success, error, "CameraPlus", "setText", [defaults]);
 }
 
 module.exports = cameraplus_exports;

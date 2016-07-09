@@ -42,7 +42,6 @@ public final class CameraManager {
     public Camera camera;
     private boolean initialized;
     public boolean previewing;
-    public String text;
 
     private SurfaceTexture surfaceTexture;
 
@@ -643,6 +642,8 @@ final class PreviewCallback implements Camera.PreviewCallback {
     private int previewFormat;
     private int previewWidth;
     private int previewHeight;
+
+    private String text;
 
     public static String TAG = "PreviewCallback";
 
