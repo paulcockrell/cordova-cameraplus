@@ -45,25 +45,25 @@ public class CameraPlus extends CordovaPlugin {
 
 
     @Override
-    public boolean execute(String action, JSONArray inputs, CallbackContext callbackContext) throws JSONException {
+    public boolean execute(String action, CordovaArgs args, CallbackContext callbackContext) throws JSONException {
         PluginResult result = null;
         if (ACTION_START_CAMERA.equals(action)) {
-            result = startCamera(inputs, callbackContext);
+            result = startCamera(args, callbackContext);
 
         } else if (ACTION_STOP_CAMERA.equals(action)) {
-            result = stopCamera(inputs, callbackContext);
+            result = stopCamera(args, callbackContext);
 
         } else if (ACTION_GET_JPEG_IMAGE.equals(action)) {
-            result = getJpegImage(inputs, callbackContext);
+            result = getJpegImage(args, callbackContext);
 
         } else if (ACTION_SET_TEXT.equals(action)) {
-            result = setText(inputs, callbackContext);
+            result = setText(args, callbackContext);
 
         } else if (ACTION_GET_VIDEO_FORMATS.equals(action)) {
-            result = getVideoFormats(inputs, callbackContext);
+            result = getVideoFormats(args, callbackContext);
 
         } else if (ACTION_SET_VIDEO_FORMATS.equals(action)) {
-            result = setVideoFormats(inputs, callbackContext);
+            result = setVideoFormats(args, callbackContext);
 
         } else {
             Log.d(LOGTAG, String.format("Invalid action passed: %s", action));
@@ -76,7 +76,7 @@ public class CameraPlus extends CordovaPlugin {
     }
 
 
-    private PluginResult startCamera(JSONArray inputs, CallbackContext callbackContext) {
+    private PluginResult startCamera(CordovaArgs inputs, CallbackContext callbackContext) {
         Log.w(LOGTAG, "startCamera");
 
          // initialize the camera manager :)
@@ -86,7 +86,7 @@ public class CameraPlus extends CordovaPlugin {
          return null;
     }
 
-    private PluginResult stopCamera(JSONArray inputs, CallbackContext callbackContext) {
+    private PluginResult stopCamera(CordovaArgs inputs, CallbackContext callbackContext) {
         Log.w(LOGTAG, "stopCamera");
 
         // stop Capturing but do not we cannot free the CameraManager :s
@@ -95,7 +95,7 @@ public class CameraPlus extends CordovaPlugin {
         return null;
     }
 
-    private PluginResult getJpegImage(JSONArray inputs, CallbackContext callbackContext) {
+    private PluginResult getJpegImage(CordovaArgs inputs, CallbackContext callbackContext) {
     	Log.w(LOGTAG, "getJpegImage");
 
         byte[] bArray = CameraManager.lastFrame();
@@ -116,14 +116,14 @@ public class CameraPlus extends CordovaPlugin {
         return null;
     }
 
-    private PluginResult getVideoFormats(JSONArray inputs, CallbackContext callbackContext) {
+    private PluginResult getVideoFormats(CordovaArgs inputs, CallbackContext callbackContext) {
         Log.w(LOGTAG, "getVideoFormats");
 
         callbackContext.success( "0" );
         return null;
     }
 
-    private PluginResult setVideoFormats(JSONArray inputs, CallbackContext callbackContext) {
+    private PluginResult setVideoFormats(CordovaArgs inputs, CallbackContext callbackContext) {
         Log.w(LOGTAG, "setVideoFormats");
 
         callbackContext.success( "false" );
