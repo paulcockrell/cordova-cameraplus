@@ -49,8 +49,8 @@ import java.nio.ByteBuffer;
  * and then go back to what we were doing.
  */
 public class CircularEncoder {
-    private static final String TAG = "CircularEncoder";
-    private static final boolean VERBOSE = false;
+    private static final String TAG = "XXXCircularEncoder";
+    private static final boolean VERBOSE = true;
 
     private static final String MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
     private static final int IFRAME_INTERVAL = 1;           // sync frame every second
