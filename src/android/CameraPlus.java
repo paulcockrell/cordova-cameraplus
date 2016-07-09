@@ -140,7 +140,7 @@ public class CameraPlus extends CordovaPlugin {
     }
 
     private PluginResult saveVideo(CordovaArgs args, CallbackContext callbackContext) {
-        CameraManager.saveVideo();
+        CameraManager.get().saveVideo();
         callbackContext.success( "true" );
 
         return null;
