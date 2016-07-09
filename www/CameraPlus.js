@@ -43,4 +43,8 @@ cameraplus_exports.setText = function(text, success, error) {
   exec(success, error, "CameraPlus", "setText", [text]);
 }
 
+cameraplus_exports.saveVideo = function(success, error) {
+  exec(success, error, "CameraPlus", "setText", []);
+}
+
 module.exports = cameraplus_exports;

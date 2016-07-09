@@ -51,6 +51,87 @@ public final class CameraManager {
     public static boolean DEBUG = true;
     public static String TAG = "CameraManager";
 
+    private int mCameraPreviewThousandFps;
+    private MainHandler mHandler;
+    private float mSecondsOfVideo;
+
+    /**
+    * Custom message handler for main UI thread.
+    * <p>
+    * Used to handle camera preview "frame available" notifications, and implement the
+    * blinking "recording" text.  Receives callback messages from the encoder thread.
+    */
+    private static class MainHandler extends Handler implements CircularEncoder.Callback {
+        public static final int MSG_BLINK_TEXT = 0;
+        public static final int MSG_FRAME_AVAILABLE = 1;
+        public static final int MSG_FILE_SAVE_COMPLETE = 2;
+        public static final int MSG_BUFFER_STATUS = 3;
+
+        private WeakReference<ContinuousCaptureActivity> mWeakActivity;
+
+        public MainHandler(ContinuousCaptureActivity activity) {
+            mWeakActivity = new WeakReference<ContinuousCaptureActivity>(activity);
+        }
+
+        // CircularEncoder.Callback, called on encoder thread
+        @Override
+        public void fileSaveComplete(int status) {
+            sendMessage(obtainMessage(MSG_FILE_SAVE_COMPLETE, status, 0, null));
+        }
+
+        // CircularEncoder.Callback, called on encoder thread
+        @Override
+        public void bufferStatus(long totalTimeMsec) {
+            sendMessage(obtainMessage(MSG_BUFFER_STATUS,
+                  (int) (totalTimeMsec >> 32), (int) totalTimeMsec));
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            ContinuousCaptureActivity activity = mWeakActivity.get();
+            if (activity == null) {
+                Log.d(TAG, "Got message for dead activity");
+                return;
+            }
+
+            switch (msg.what) {
+                case MSG_BLINK_TEXT: {
+                    TextView tv = (TextView) activity.findViewById(R.id.recording_text);
+
+                    // Attempting to make it blink by using setEnabled() doesn't work --
+                    // it just changes the color.  We want to change the visibility.
+                    int visibility = tv.getVisibility();
+                    if (visibility == View.VISIBLE) {
+                        visibility = View.INVISIBLE;
+                    } else {
+                        visibility = View.VISIBLE;
+                    }
+                    tv.setVisibility(visibility);
+
+                    int delay = (visibility == View.VISIBLE) ? 1000 : 200;
+                    sendEmptyMessageDelayed(MSG_BLINK_TEXT, delay);
+                    break;
+                }
+                case MSG_FRAME_AVAILABLE: {
+                    activity.drawFrame();
+                    break;
+                }
+                case MSG_FILE_SAVE_COMPLETE: {
+                    activity.fileSaveComplete(msg.arg1);
+                    break;
+                }
+                case MSG_BUFFER_STATUS: {
+                    long duration = (((long) msg.arg1) << 32) |
+                                    (((long) msg.arg2) & 0xffffffffL);
+                    activity.updateBufferStatus(duration);
+                    break;
+                }
+                default:
+                    throw new RuntimeException("Unknown message " + msg.what);
+            }
+        }
+    }
+
     public static void setDesiredPreviewSize(int width, int height) {
         mDesiredWidth = width;
         mDesiredHeight = height;
@@ -337,6 +418,14 @@ public final class CameraManager {
 
             if (DEBUG) Log.i(TAG, "Setting Standard Callback");
             camera.setPreviewCallback(previewCallback);
+
+            try {
+                mCircEncoder = new CircularEncoder(VIDEO_WIDTH, VIDEO_HEIGHT, 600000,
+                mCameraPreviewThousandFps / 1000, 7, mHandler);
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+
 
             previewing = true;
         }

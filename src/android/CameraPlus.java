@@ -42,6 +42,7 @@ public class CameraPlus extends CordovaPlugin {
     private static final String ACTION_GET_VIDEO_FORMATS = "getVideoFormats";
     private static final String ACTION_SET_VIDEO_FORMATS = "setVideoFormat";
     private static final String ACTION_SET_TEXT = "setText";
+    private static final String ACTION_SAVE_VIDEO = "saveVideo";
 
 
     @Override
@@ -64,6 +65,9 @@ public class CameraPlus extends CordovaPlugin {
 
         } else if (ACTION_SET_VIDEO_FORMATS.equals(action)) {
             result = setVideoFormats(args, callbackContext);
+
+        } else if (ACTION_SAVE_VIDEO.equals(action)) {
+            result = saveVideo(args, callbackContext);
 
         } else {
             Log.d(LOGTAG, String.format("Invalid action passed: %s", action));
@@ -103,6 +107,7 @@ public class CameraPlus extends CordovaPlugin {
         {
         	Log.w(LOGTAG, "Received " + String.valueOf(bArray.length) + " bytes...");
 
+
         	String imageEncoded = Base64.encodeToString(bArray,Base64.NO_WRAP);
 
         	callbackContext.success( imageEncoded );
@@ -130,6 +135,13 @@ public class CameraPlus extends CordovaPlugin {
         else {
             callbackContext.error( "false" );
         }
+
+        return null;
+    }
+
+    private PluginResult saveVideo(CordovaArgs args, CallbackContext callbackContext) {
+        mCircEncoder.saveVideo(mOutputFile);
+        callbackContext.success( "true" );
 
         return null;
     }
