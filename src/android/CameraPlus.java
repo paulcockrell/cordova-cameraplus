@@ -165,7 +165,7 @@ public class CameraPlus extends CordovaPlugin {
     private PluginResult setText(CordovaArgs args, CallbackContext callbackContext) {
 
         String text = args.getString(0);
-        boolean res = CameraManager.setText(text);
+        boolean res = CameraManager.get().setText(text);
 
         if (res == true)
         {
