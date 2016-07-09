@@ -163,7 +163,7 @@ public class CameraPlus extends CordovaPlugin {
 
     private PluginResult setText(JSONArray inputs, CallbackContext callbackContext) {
 
-        JsonObject obj = inputs.getJsonObject(0);
+        JSONObject obj = inputs.getJsonObject(0);
         String text = obj.getString("text");
         boolean res = CameraManager.setText(text);
 
