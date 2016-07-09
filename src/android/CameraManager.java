@@ -140,7 +140,6 @@ public final class CameraManager {
      */
     private void updateBufferStatus(long durationUsec) {
         mSecondsOfVideo = durationUsec / 1000000.0f;
-        updateControls();
     }
 
 
