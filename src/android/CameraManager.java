@@ -127,17 +127,22 @@ public final class CameraManager {
         }
     }
 
-    public static void fileSaveComplete() {
-
-    }
-
     /**
-    * The file save has completed.  We can resume recording.
-    */
-    private void fileSaveComplete(int status) {
+     * The file save has completed.  We can resume recording.
+     */
+    private static void fileSaveComplete(int status) {
         Log.d(TAG, "fileSaveComplete " + status);
         //TODO Do something?
     }
+
+    /**
+     * Updates the buffer status UI.
+     */
+    private void updateBufferStatus(long durationUsec) {
+        mSecondsOfVideo = durationUsec / 1000000.0f;
+        updateControls();
+    }
+
 
     public static void setDesiredPreviewSize(int width, int height) {
         mDesiredWidth = width;
