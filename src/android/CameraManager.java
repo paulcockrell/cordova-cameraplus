@@ -30,6 +30,7 @@ import android.hardware.Camera.Size;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Display;
 import android.view.Surface;
@@ -167,7 +168,7 @@ public final class CameraManager {
         }
         mHandler = new MainHandler(this);
 
-        mOutputFile = new File(getFilesDir(), "continuous-capture.mp4");
+        mOutputFile = new File(Environment.getDataDirectory(), "/data/" + packageName + "continuous-capture.mp4");
         mSecondsOfVideo = 0.0f;
     }
 
