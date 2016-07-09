@@ -40,6 +40,7 @@ public class CameraPlus extends CordovaPlugin {
     private static final String ACTION_GET_JPEG_IMAGE = "getJpegImage";
     private static final String ACTION_GET_VIDEO_FORMATS = "getVideoFormats";
     private static final String ACTION_SET_VIDEO_FORMATS = "setVideoFormat";
+    private static final String ACTION_SET_TEXT = "setText";
 
 
     @Override
@@ -53,6 +54,9 @@ public class CameraPlus extends CordovaPlugin {
 
         } else if (ACTION_GET_JPEG_IMAGE.equals(action)) {
             result = getJpegImage(inputs, callbackContext);
+
+        } else if (ACTION_SET_TEXT.equals(action)) {
+            result = setText(inputs, callbackContext);
 
         } else if (ACTION_GET_VIDEO_FORMATS.equals(action)) {
             result = getVideoFormats(inputs, callbackContext);
@@ -156,6 +160,23 @@ public class CameraPlus extends CordovaPlugin {
 
         return true;
     }
+
+    private PluginResult setText(JSONArray inputs, CallbackContext callbackContext) {
+
+        boolean res = CameraManager.setText(inputs[0]);
+
+        if (res == true)
+        {
+        	callbackContext.success( true );
+        }
+        else
+        {
+        	callbackContext.error( false );
+        }
+
+        return null;
+    }
+
 
     /**
      * Called when the system is about to start resuming a previous activity.

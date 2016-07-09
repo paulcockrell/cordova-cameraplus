@@ -42,6 +42,7 @@ public final class CameraManager {
     public Camera camera;
     private boolean initialized;
     public boolean previewing;
+    public String text;
 
     private SurfaceTexture surfaceTexture;
 
@@ -694,6 +695,13 @@ final class PreviewCallback implements Camera.PreviewCallback {
         }
     }
 
+    public boolean setText(string text)
+    {
+      this.text = text;
+
+      return true;
+    }
+
     public void onPreviewFrame(byte[] data, Camera camera)
     {
         if (!newImageNeeded)
@@ -762,7 +770,8 @@ final class PreviewCallback implements Camera.PreviewCallback {
             mPaint.setTextSize(80);
 
             // Draw text on the 'Bitmap' image
-            cv.drawText("Paul rulez OK!", 100, 100, mPaint);
+            if (this.text == null) this.text = "No text";
+            cv.drawText(this.text, 100, 100, mPaint);
 
             // Reset the stream of 'output' for output writing.
             //data.reset();
