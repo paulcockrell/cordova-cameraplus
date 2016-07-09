@@ -695,7 +695,7 @@ final class PreviewCallback implements Camera.PreviewCallback {
         }
     }
 
-    public boolean setText(string text)
+    public boolean setText(String text)
     {
       this.text = text;
 
