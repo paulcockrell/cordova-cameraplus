@@ -172,7 +172,7 @@ public final class CameraManager {
         }
         mHandler = new MainHandler(this);
 
-        mOutputFile = new File(Environment.getDataDirectory(), "/data/" + packageName + "continuous-capture.mp4");
+        mOutputFile = new File(Environment.getDataDirectory(), "/data/" + TAG + "/continuous-capture.mp4");
         mSecondsOfVideo = 0.0f;
     }
 
