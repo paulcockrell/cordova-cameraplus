@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
-<plugin 
+<plugin
 id="com.moonware.cameraplus"
 version="0.2.2"
-xmlns="http://apache.org/cordova/ns/plugins/1.0" 
+xmlns="http://apache.org/cordova/ns/plugins/1.0"
 xmlns:android="http://schemas.android.com/apk/res/android">
 
 <name>CameraPlus</name>
@@ -29,11 +29,13 @@ xmlns:android="http://schemas.android.com/apk/res/android">
     </config-file>
 
     <config-file target="AndroidManifest.xml" parent="/*">
-        <uses-permission android:name="android.permission.CAMERA" />     
+        <uses-permission android:name="android.permission.CAMERA" />
     </config-file>
 
     <source-file src="src/android/CameraPlus.java" target-dir="src/com/moonware/cameraplus" />
     <source-file src="src/android/CameraManager.java" target-dir="src/com/moonware/cameraplus" />
+    <source-file src="src/android/CircularEncoder.java" target-dir="src/com/moonware/cameraplus" />
+    <source-file src="src/android/CircularEncoderBuffer.java" target-dir="src/com/moonware/cameraplus" />
 </platform>
 
 <platform name="ios">
