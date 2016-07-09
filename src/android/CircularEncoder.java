@@ -17,285 +17,468 @@
 package com.moonware.cameraplus;
 
 import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Log;
+import android.view.Surface;
 
+import java.io.File;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 
 /**
- * Holds encoded video data in a circular buffer.
+ * Encodes video in a fixed-size circular buffer.
  * <p>
- * This is actually a pair of circular buffers, one for the raw data and one for the meta-data
- * (flags and PTS).
+ * The obvious way to do this would be to store each packet in its own buffer and hook it
+ * into a linked list.  The trouble with this approach is that it requires constant
+ * allocation, which means we'll be driving the GC to distraction as the frame rate and
+ * bit rate increase.  Instead we create fixed-size pools for video data and metadata,
+ * which requires a bit more work for us but avoids allocations in the steady state.
  * <p>
- * Not thread-safe.
+ * Video must always start with a sync frame (a/k/a key frame, a/k/a I-frame).  When the
+ * circular buffer wraps around, we either need to delete all of the data between the frame at
+ * the head of the list and the next sync frame, or have the file save function know that
+ * it needs to scan forward for a sync frame before it can start saving data.
+ * <p>
+ * When we're told to save a snapshot, we create a MediaMuxer, write all the frames out,
+ * and then go back to what we were doing.
  */
-public class CircularEncoderBuffer {
+public class CircularEncoder {
     private static final String TAG = MainActivity.TAG;
-    private static final boolean EXTRA_DEBUG = true;
     private static final boolean VERBOSE = false;
 
-    // Raw data (e.g. AVC NAL units) held here.
-    //
-    // The MediaMuxer writeSampleData() function takes a ByteBuffer.  If it's a "direct"
-    // ByteBuffer it'll access the data directly, if it's a regular ByteBuffer it'll use
-    // JNI functions to access the backing byte[] (which, in the current VM, is done without
-    // copying the data).
-    //
-    // It's much more convenient to work with a byte[], so we just wrap it with a ByteBuffer
-    // as needed.  This is a bit awkward when we hit the edge of the buffer, but for that
-    // we can just do an allocation and data copy (we know it happens at most once per file
-    // save operation).
-    private ByteBuffer mDataBufferWrapper;
-    private byte[] mDataBuffer;
+    private static final String MIME_TYPE = "video/avc";    // H.264 Advanced Video Coding
+    private static final int IFRAME_INTERVAL = 1;           // sync frame every second
 
-    // Meta-data held here.  We're using a collection of arrays, rather than an array of
-    // objects with multiple fields, to minimize allocations and heap footprint.
-    private int[] mPacketFlags;
-    private long[] mPacketPtsUsec;
-    private int[] mPacketStart;
-    private int[] mPacketLength;
-
-    // Data is added at head and removed from tail.  Head points to an empty node, so if
-    // head==tail the list is empty.
-    private int mMetaHead;
-    private int mMetaTail;
+    private EncoderThread mEncoderThread;
+    private Surface mInputSurface;
+    private MediaCodec mEncoder;
 
     /**
-     * Allocates the circular buffers we use for encoded data and meta-data.
+     * Callback function definitions.  CircularEncoder caller must provide one.
      */
-    public CircularEncoderBuffer(int bitRate, int frameRate, int desiredSpanSec) {
-        // For the encoded data, we assume the encoded bit rate is close to what we request.
+    public interface Callback {
+        /**
+         * Called some time after saveVideo(), when all data has been written to the
+         * output file.
+         *
+         * @param status Zero means success, nonzero indicates failure.
+         */
+        void fileSaveComplete(int status);
+
+        /**
+         * Called occasionally.
+         *
+         * @param totalTimeMsec Total length, in milliseconds, of buffered video.
+         */
+        void bufferStatus(long totalTimeMsec);
+    }
+
+    /**
+     * Configures encoder, and prepares the input Surface.
+     *
+     * @param width Width of encoded video, in pixels.  Should be a multiple of 16.
+     * @param height Height of encoded video, in pixels.  Usually a multiple of 16 (1080 is ok).
+     * @param bitRate Target bit rate, in bits.
+     * @param frameRate Expected frame rate.
+     * @param desiredSpanSec How many seconds of video we want to have in our buffer at any time.
+     */
+    public CircularEncoder(int width, int height, int bitRate, int frameRate, int desiredSpanSec,
+            Callback cb) throws IOException {
+        // The goal is to size the buffer so that we can accumulate N seconds worth of video,
+        // where N is passed in as "desiredSpanSec".  If the codec generates data at roughly
+        // the requested bit rate, we can compute it as time * bitRate / bitsPerByte.
         //
-        // There would be a minor performance advantage to using a power of two here, because
-        // not all ARM CPUs support integer modulus.
-        int dataBufferSize = bitRate * desiredSpanSec / 8;
-        mDataBuffer = new byte[dataBufferSize];
-        mDataBufferWrapper = ByteBuffer.wrap(mDataBuffer);
-
-        // Meta-data is smaller than encoded data for non-trivial frames, so we over-allocate
-        // a bit.  This should ensure that we drop packets because we ran out of (expensive)
-        // data storage rather than (inexpensive) metadata storage.
-        int metaBufferCount = frameRate * desiredSpanSec * 2;
-        mPacketFlags = new int[metaBufferCount];
-        mPacketPtsUsec = new long[metaBufferCount];
-        mPacketStart = new int[metaBufferCount];
-        mPacketLength = new int[metaBufferCount];
-
-        if (VERBOSE) {
-            Log.d(TAG, "CBE: bitRate=" + bitRate + " frameRate=" + frameRate +
-                    " desiredSpan=" + desiredSpanSec + ": dataBufferSize=" + dataBufferSize +
-                " metaBufferCount=" + metaBufferCount);
+        // Sync frames will appear every (frameRate * IFRAME_INTERVAL) frames.  If the frame
+        // rate is higher or lower than expected, various calculations may not work out right.
+        //
+        // Since we have to start muxing from a sync frame, we want to ensure that there's
+        // room for at least one full GOP in the buffer, preferrably two.
+        if (desiredSpanSec < IFRAME_INTERVAL * 2) {
+            throw new RuntimeException("Requested time span is too short: " + desiredSpanSec +
+                    " vs. " + (IFRAME_INTERVAL * 2));
         }
+        CircularEncoderBuffer encBuffer = new CircularEncoderBuffer(bitRate, frameRate,
+                desiredSpanSec);
+
+        MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, width, height);
+
+        // Set some properties.  Failing to specify some of these can cause the MediaCodec
+        // configure() call to throw an unhelpful exception.
+        format.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+                MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate);
+        format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
+        format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL);
+        if (VERBOSE) Log.d(TAG, "format: " + format);
+
+        // Create a MediaCodec encoder, and configure it with our format.  Get a Surface
+        // we can use for input and wrap it with a class that handles the EGL work.
+        mEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
+        mEncoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+        mInputSurface = mEncoder.createInputSurface();
+        mEncoder.start();
+
+        // Start the encoder thread last.  That way we're sure it can see all of the state
+        // we've initialized.
+        mEncoderThread = new EncoderThread(mEncoder, encBuffer, cb);
+        mEncoderThread.start();
+        mEncoderThread.waitUntilReady();
     }
 
     /**
-     * Computes the amount of time spanned by the buffered data, based on the presentation
-     * time stamps.
+     * Returns the encoder's input surface.
      */
-    public long computeTimeSpanUsec() {
-        final int metaLen = mPacketStart.length;
-
-        if (mMetaHead == mMetaTail) {
-            // empty list
-            return 0;
-        }
-
-        // head points to the next available node, so grab the previous one
-        int beforeHead = (mMetaHead + metaLen - 1) % metaLen;
-        return mPacketPtsUsec[beforeHead] - mPacketPtsUsec[mMetaTail];
+    public Surface getInputSurface() {
+        return mInputSurface;
     }
 
     /**
-     * Adds a new encoded data packet to the buffer.
-     *
-     * @param buf The data.  Set position() to the start offset and limit() to position+size.
-     *     The position and limit may be altered by this method.
-     * @param size Number of bytes in the packet.
-     * @param flags MediaCodec.BufferInfo flags.
-     * @param ptsUsec Presentation time stamp, in microseconds.
-     */
-    public void add(ByteBuffer buf, int flags, long ptsUsec) {
-        int size = buf.limit() - buf.position();
-        if (VERBOSE) {
-            Log.d(TAG, "add size=" + size + " flags=0x" + Integer.toHexString(flags) +
-                    " pts=" + ptsUsec);
-        }
-        while (!canAdd(size)) {
-            removeTail();
-        }
-
-        final int dataLen = mDataBuffer.length;
-        final int metaLen = mPacketStart.length;
-        int packetStart = getHeadStart();
-        mPacketFlags[mMetaHead] = flags;
-        mPacketPtsUsec[mMetaHead] = ptsUsec;
-        mPacketStart[mMetaHead] = packetStart;
-        mPacketLength[mMetaHead] = size;
-
-        // Copy the data in.  Take care if it gets split in half.
-        if (packetStart + size < dataLen) {
-            // one chunk
-            buf.get(mDataBuffer, packetStart, size);
-        } else {
-            // two chunks
-            int firstSize = dataLen - packetStart;
-            if (VERBOSE) { Log.v(TAG, "split, firstsize=" + firstSize + " size=" + size); }
-            buf.get(mDataBuffer, packetStart, firstSize);
-            buf.get(mDataBuffer, 0, size - firstSize);
-        }
-
-        mMetaHead = (mMetaHead + 1) % metaLen;
-
-        if (EXTRA_DEBUG) {
-            // The head packet is the next-available spot.
-            mPacketFlags[mMetaHead] = 0x77aaccff;
-            mPacketPtsUsec[mMetaHead] = -1000000000L;
-            mPacketStart[mMetaHead] = -100000;
-            mPacketLength[mMetaHead] = Integer.MAX_VALUE;
-        }
-    }
-
-    /**
-     * Returns the index of the oldest sync frame.  Valid until the next add().
+     * Shuts down the encoder thread, and releases encoder resources.
      * <p>
-     * When sending output to a MediaMuxer, start here.
+     * Does not return until the encoder thread has stopped.
      */
-    public int getFirstIndex() {
-        final int metaLen = mPacketStart.length;
+    public void shutdown() {
+        if (VERBOSE) Log.d(TAG, "releasing encoder objects");
 
-        int index = mMetaTail;
-        while (index != mMetaHead) {
-            if ((mPacketFlags[index] & MediaCodec.BUFFER_FLAG_SYNC_FRAME) != 0) {
-                break;
+        Handler handler = mEncoderThread.getHandler();
+        handler.sendMessage(handler.obtainMessage(EncoderThread.EncoderHandler.MSG_SHUTDOWN));
+        try {
+            mEncoderThread.join();
+        } catch (InterruptedException ie) {
+            Log.w(TAG, "Encoder thread join() was interrupted", ie);
+        }
+
+        if (mEncoder != null) {
+            mEncoder.stop();
+            mEncoder.release();
+            mEncoder = null;
+        }
+    }
+
+    /**
+     * Notifies the encoder thread that a new frame will shortly be provided to the encoder.
+     * <p>
+     * There may or may not yet be data available from the encoder output.  The encoder
+     * has a fair mount of latency due to processing, and it may want to accumulate a
+     * few additional buffers before producing output.  We just need to drain it regularly
+     * to avoid a situation where the producer gets wedged up because there's no room for
+     * additional frames.
+     * <p>
+     * If the caller sends the frame and then notifies us, it could get wedged up.  If it
+     * notifies us first and then sends the frame, we guarantee that the output buffers
+     * were emptied, and it will be impossible for a single additional frame to block
+     * indefinitely.
+     */
+    public void frameAvailableSoon() {
+        Handler handler = mEncoderThread.getHandler();
+        handler.sendMessage(handler.obtainMessage(
+                EncoderThread.EncoderHandler.MSG_FRAME_AVAILABLE_SOON));
+    }
+
+    /**
+     * Initiates saving the currently-buffered frames to the specified output file.  The
+     * data will be written as a .mp4 file.  The call returns immediately.  When the file
+     * save completes, the callback will be notified.
+     * <p>
+     * The file generation is performed on the encoder thread, which means we won't be
+     * draining the output buffers while this runs.  It would be wise to stop submitting
+     * frames during this time.
+     */
+    public void saveVideo(File outputFile) {
+        Handler handler = mEncoderThread.getHandler();
+        handler.sendMessage(handler.obtainMessage(
+                EncoderThread.EncoderHandler.MSG_SAVE_VIDEO, outputFile));
+    }
+
+    /**
+     * Object that encapsulates the encoder thread.
+     * <p>
+     * We want to sleep until there's work to do.  We don't actually know when a new frame
+     * arrives at the encoder, because the other thread is sending frames directly to the
+     * input surface.  We will see data appear at the decoder output, so we can either use
+     * an infinite timeout on dequeueOutputBuffer() or wait() on an object and require the
+     * calling app wake us.  It's very useful to have all of the buffer management local to
+     * this thread -- avoids synchronization -- so we want to do the file muxing in here.
+     * So, it's best to sleep on an object and do something appropriate when awakened.
+     * <p>
+     * This class does not manage the MediaCodec encoder startup/shutdown.  The encoder
+     * should be fully started before the thread is created, and not shut down until this
+     * thread has been joined.
+     */
+    private static class EncoderThread extends Thread {
+        private MediaCodec mEncoder;
+        private MediaFormat mEncodedFormat;
+        private MediaCodec.BufferInfo mBufferInfo;
+
+        private EncoderHandler mHandler;
+        private CircularEncoderBuffer mEncBuffer;
+        private CircularEncoder.Callback mCallback;
+        private int mFrameNum;
+
+        private final Object mLock = new Object();
+        private volatile boolean mReady = false;
+
+        public EncoderThread(MediaCodec mediaCodec, CircularEncoderBuffer encBuffer,
+                CircularEncoder.Callback callback) {
+            mEncoder = mediaCodec;
+            mEncBuffer = encBuffer;
+            mCallback = callback;
+
+            mBufferInfo = new MediaCodec.BufferInfo();
+        }
+
+        /**
+         * Thread entry point.
+         * <p>
+         * Prepares the Looper, Handler, and signals anybody watching that we're ready to go.
+         */
+        @Override
+        public void run() {
+            Looper.prepare();
+            mHandler = new EncoderHandler(this);    // must create on encoder thread
+            Log.d(TAG, "encoder thread ready");
+            synchronized (mLock) {
+                mReady = true;
+                mLock.notify();    // signal waitUntilReady()
             }
-            index = (index + 1) % metaLen;
+
+            Looper.loop();
+
+            synchronized (mLock) {
+                mReady = false;
+                mHandler = null;
+            }
+            Log.d(TAG, "looper quit");
         }
 
-        if (index == mMetaHead) {
-            Log.w(TAG, "HEY: could not find sync frame in buffer");
-            index = -1;
-        }
-        return index;
-    }
-
-    /**
-     * Returns the index of the next packet, or -1 if we've reached the end.
-     */
-    public int getNextIndex(int index) {
-        final int metaLen = mPacketStart.length;
-        int next = (index + 1) % metaLen;
-        if (next == mMetaHead) {
-            next = -1;
-        }
-        return next;
-    }
-
-    /**
-     * Returns a reference to a "direct" ByteBuffer with the data, and fills in the
-     * BufferInfo.
-     * <p>
-     * The caller must not modify the contents of the returned ByteBuffer.  Altering
-     * the position and limit is allowed.
-     */
-    public ByteBuffer getChunk(int index, MediaCodec.BufferInfo info) {
-        final int dataLen = mDataBuffer.length;
-        int packetStart = mPacketStart[index];
-        int length = mPacketLength[index];
-
-        info.flags = mPacketFlags[index];
-        info.offset = packetStart;
-        info.presentationTimeUs = mPacketPtsUsec[index];
-        info.size = length;
-
-        if (packetStart + length <= dataLen) {
-            // one chunk; return full buffer to avoid copying data
-            return mDataBufferWrapper;
-        } else {
-            // two chunks
-            ByteBuffer tempBuf = ByteBuffer.allocateDirect(length);
-            int firstSize = dataLen - packetStart;
-            tempBuf.put(mDataBuffer, mPacketStart[index], firstSize);
-            tempBuf.put(mDataBuffer, 0, length - firstSize);
-            info.offset = 0;
-            return tempBuf;
-        }
-    }
-
-    /**
-     * Computes the data buffer offset for the next place to store data.
-     * <p>
-     * Equal to the start of the previous packet's data plus the previous packet's length.
-     */
-    private int getHeadStart() {
-        if (mMetaHead == mMetaTail) {
-            // list is empty
-            return 0;
+        /**
+         * Waits until the encoder thread is ready to receive messages.
+         * <p>
+         * Call from non-encoder thread.
+         */
+        public void waitUntilReady() {
+            synchronized (mLock) {
+                while (!mReady) {
+                    try {
+                        mLock.wait();
+                    } catch (InterruptedException ie) { /* not expected */ }
+                }
+            }
         }
 
-        final int dataLen = mDataBuffer.length;
-        final int metaLen = mPacketStart.length;
-
-        int beforeHead = (mMetaHead + metaLen - 1) % metaLen;
-        return (mPacketStart[beforeHead] + mPacketLength[beforeHead] + 1) % dataLen;
-    }
-
-    /**
-     * Determines whether this is enough space to fit "size" bytes in the data buffer, and
-     * one more packet in the meta-data buffer.
-     *
-     * @return True if there is enough space to add without removing anything.
-     */
-    private boolean canAdd(int size) {
-        final int dataLen = mDataBuffer.length;
-        final int metaLen = mPacketStart.length;
-
-        if (size > dataLen) {
-            throw new RuntimeException("Enormous packet: " + size + " vs. buffer " +
-                    dataLen);
-        }
-        if (mMetaHead == mMetaTail) {
-            // empty list
-            return true;
+        /**
+         * Returns the Handler used to send messages to the encoder thread.
+         */
+        public EncoderHandler getHandler() {
+            synchronized (mLock) {
+                // Confirm ready state.
+                if (!mReady) {
+                    throw new RuntimeException("not ready");
+                }
+            }
+            return mHandler;
         }
 
-        // Make sure we can advance head without stepping on the tail.
-        int nextHead = (mMetaHead + 1) % metaLen;
-        if (nextHead == mMetaTail) {
+        /**
+         * Drains all pending output from the decoder, and adds it to the circular buffer.
+         */
+        public void drainEncoder() {
+            final int TIMEOUT_USEC = 0;     // no timeout -- check for buffers, bail if none
+
+            ByteBuffer[] encoderOutputBuffers = mEncoder.getOutputBuffers();
+            while (true) {
+                int encoderStatus = mEncoder.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
+                if (encoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
+                    // no output available yet
+                    break;
+                } else if (encoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+                    // not expected for an encoder
+                    encoderOutputBuffers = mEncoder.getOutputBuffers();
+                } else if (encoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                    // Should happen before receiving buffers, and should only happen once.
+                    // The MediaFormat contains the csd-0 and csd-1 keys, which we'll need
+                    // for MediaMuxer.  It's unclear what else MediaMuxer might want, so
+                    // rather than extract the codec-specific data and reconstruct a new
+                    // MediaFormat later, we just grab it here and keep it around.
+                    mEncodedFormat = mEncoder.getOutputFormat();
+                    Log.d(TAG, "encoder output format changed: " + mEncodedFormat);
+                } else if (encoderStatus < 0) {
+                    Log.w(TAG, "unexpected result from encoder.dequeueOutputBuffer: " +
+                            encoderStatus);
+                    // let's ignore it
+                } else {
+                    ByteBuffer encodedData = encoderOutputBuffers[encoderStatus];
+                    if (encodedData == null) {
+                        throw new RuntimeException("encoderOutputBuffer " + encoderStatus +
+                                " was null");
+                    }
+
+                    if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
+                        // The codec config data was pulled out when we got the
+                        // INFO_OUTPUT_FORMAT_CHANGED status.  The MediaMuxer won't accept
+                        // a single big blob -- it wants separate csd-0/csd-1 chunks --
+                        // so simply saving this off won't work.
+                        if (VERBOSE) Log.d(TAG, "ignoring BUFFER_FLAG_CODEC_CONFIG");
+                        mBufferInfo.size = 0;
+                    }
+
+                    if (mBufferInfo.size != 0) {
+                        // adjust the ByteBuffer values to match BufferInfo (not needed?)
+                        encodedData.position(mBufferInfo.offset);
+                        encodedData.limit(mBufferInfo.offset + mBufferInfo.size);
+
+                        mEncBuffer.add(encodedData, mBufferInfo.flags,
+                                mBufferInfo.presentationTimeUs);
+
+                        if (VERBOSE) {
+                            Log.d(TAG, "sent " + mBufferInfo.size + " bytes to muxer, ts=" +
+                                    mBufferInfo.presentationTimeUs);
+                        }
+                    }
+
+                    mEncoder.releaseOutputBuffer(encoderStatus, false);
+
+                    if ((mBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        Log.w(TAG, "reached end of stream unexpectedly");
+                        break;      // out of while
+                    }
+                }
+            }
+        }
+
+        /**
+         * Drains the encoder output.
+         * <p>
+         * See notes for {@link CircularEncoder#frameAvailableSoon()}.
+         */
+        void frameAvailableSoon() {
+            if (VERBOSE) Log.d(TAG, "frameAvailableSoon");
+            drainEncoder();
+
+            mFrameNum++;
+            if ((mFrameNum % 10) == 0) {        // TODO: should base off frame rate or clock?
+                mCallback.bufferStatus(mEncBuffer.computeTimeSpanUsec());
+            }
+        }
+
+        /**
+         * Saves the encoder output to a .mp4 file.
+         * <p>
+         * We'll drain the encoder to get any lingering data, but we're not going to shut
+         * the encoder down or use other tricks to try to "flush" the encoder.  This may
+         * mean we miss the last couple of submitted frames if they're still working their
+         * way through.
+         * <p>
+         * We may want to reset the buffer after this -- if they hit "capture" again right
+         * away they'll end up saving video with a gap where we paused to write the file.
+         */
+        void saveVideo(File outputFile) {
+            if (VERBOSE) Log.d(TAG, "saveVideo " + outputFile);
+
+            int index = mEncBuffer.getFirstIndex();
+            if (index < 0) {
+                Log.w(TAG, "Unable to get first index");
+                mCallback.fileSaveComplete(1);
+                return;
+            }
+
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            MediaMuxer muxer = null;
+            int result = -1;
+            try {
+                muxer = new MediaMuxer(outputFile.getPath(),
+                        MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+                int videoTrack = muxer.addTrack(mEncodedFormat);
+                muxer.start();
+
+                do {
+                    ByteBuffer buf = mEncBuffer.getChunk(index, info);
+                    if (VERBOSE) {
+                        Log.d(TAG, "SAVE " + index + " flags=0x" + Integer.toHexString(info.flags));
+                    }
+                    muxer.writeSampleData(videoTrack, buf, info);
+                    index = mEncBuffer.getNextIndex(index);
+                } while (index >= 0);
+                result = 0;
+            } catch (IOException ioe) {
+                Log.w(TAG, "muxer failed", ioe);
+                result = 2;
+            } finally {
+                if (muxer != null) {
+                    muxer.stop();
+                    muxer.release();
+                }
+            }
+
             if (VERBOSE) {
-                Log.v(TAG, "ran out of metadata (head=" + mMetaHead + " tail=" + mMetaTail +")");
+                Log.d(TAG, "muxer stopped, result=" + result);
             }
-            return false;
+            mCallback.fileSaveComplete(result);
         }
 
-        // Need the byte offset of the start of the "tail" packet, and the byte offset where
-        // "head" will store its data.
-        int headStart = getHeadStart();
-        int tailStart = mPacketStart[mMetaTail];
-        int freeSpace = (tailStart + dataLen - headStart) % dataLen;
-        if (size > freeSpace) {
-            if (VERBOSE) {
-                Log.v(TAG, "ran out of data (tailStart=" + tailStart + " headStart=" + headStart +
-                    " req=" + size + " free=" + freeSpace + ")");
+        /**
+         * Tells the Looper to quit.
+         */
+        void shutdown() {
+            if (VERBOSE) Log.d(TAG, "shutdown");
+            Looper.myLooper().quit();
+        }
+
+        /**
+         * Handler for EncoderThread.  Used for messages sent from the UI thread (or whatever
+         * is driving the encoder) to the encoder thread.
+         * <p>
+         * The object is created on the encoder thread.
+         */
+        private static class EncoderHandler extends Handler {
+            public static final int MSG_FRAME_AVAILABLE_SOON = 1;
+            public static final int MSG_SAVE_VIDEO = 2;
+            public static final int MSG_SHUTDOWN = 3;
+
+            // This shouldn't need to be a weak ref, since we'll go away when the Looper quits,
+            // but no real harm in it.
+            private WeakReference<EncoderThread> mWeakEncoderThread;
+
+            /**
+             * Constructor.  Instantiate object from encoder thread.
+             */
+            public EncoderHandler(EncoderThread et) {
+                mWeakEncoderThread = new WeakReference<EncoderThread>(et);
             }
-            return false;
-        }
 
-        if (VERBOSE) {
-            Log.v(TAG, "OK: size=" + size + " free=" + freeSpace + " metaFree=" +
-                    ((mMetaTail + metaLen - mMetaHead) % metaLen - 1));
-        }
+            @Override  // runs on encoder thread
+            public void handleMessage(Message msg) {
+                int what = msg.what;
+                if (VERBOSE) {
+                    Log.v(TAG, "EncoderHandler: what=" + what);
+                }
 
-        return true;
-    }
+                EncoderThread encoderThread = mWeakEncoderThread.get();
+                if (encoderThread == null) {
+                    Log.w(TAG, "EncoderHandler.handleMessage: weak ref is null");
+                    return;
+                }
 
-    /**
-     * Removes the tail packet.
-     */
-    private void removeTail() {
-        if (mMetaHead == mMetaTail) {
-            throw new RuntimeException("Can't removeTail() in empty buffer");
+                switch (what) {
+                    case MSG_FRAME_AVAILABLE_SOON:
+                        encoderThread.frameAvailableSoon();
+                        break;
+                    case MSG_SAVE_VIDEO:
+                        encoderThread.saveVideo((File) msg.obj);
+                        break;
+                    case MSG_SHUTDOWN:
+                        encoderThread.shutdown();
+                        break;
+                    default:
+                        throw new RuntimeException("unknown message " + what);
+                }
+            }
         }
-        final int metaLen = mPacketStart.length;
-        mMetaTail = (mMetaTail + 1) % metaLen;
     }
 }
