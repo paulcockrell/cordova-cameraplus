@@ -445,6 +445,10 @@ public final class CameraManager {
         }
     }
 
+    public void saveVideo() {
+        mCircEncoder.saveVideo(mOutputFile);
+    }
+
     public void stopPreview() {
         if (camera != null && previewing) {
 
