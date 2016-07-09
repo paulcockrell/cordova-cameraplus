@@ -39,7 +39,7 @@ cameraplus_exports.onCapture = function(success, error) {
 	//TODO: Overwrite this methods for receiving the content
 };
 
-cameraPlus_exports.setText = function(text, success, error) {
+cameraplus_exports.setText = function(text, success, error) {
   exec(success, error, "CameraPlus", "setText", [text]);
 }
 
