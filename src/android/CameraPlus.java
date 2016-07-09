@@ -169,11 +169,11 @@ public class CameraPlus extends CordovaPlugin {
 
         if (res == true)
         {
-        	callbackContext.success( true );
+        	callbackContext.success( 1 );
         }
         else
         {
-        	callbackContext.error( false );
+        	callbackContext.error( 0 );
         }
 
         return null;
