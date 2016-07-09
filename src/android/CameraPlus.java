@@ -96,10 +96,9 @@ public class CameraPlus extends CordovaPlugin {
     }
 
     private PluginResult getJpegImage(CordovaArgs inputs, CallbackContext callbackContext) {
-    	Log.w(LOGTAG, "getJpegImage");
+    	  Log.w(LOGTAG, "getJpegImage");
 
         byte[] bArray = CameraManager.lastFrame();
-
         if (bArray != null)
         {
         	Log.w(LOGTAG, "Received " + String.valueOf(bArray.length) + " bytes...");
@@ -111,6 +110,19 @@ public class CameraPlus extends CordovaPlugin {
         else
         {
         	callbackContext.error(0);
+        }
+
+        return null;
+    }
+
+    private PluginResult setText(CordovaArgs args, CallbackContext callbackContext) {
+        String text = args.getString(0);
+        boolean res = CameraManager.setText(text);
+        if (res) {
+            callbackContext.success( "true" );
+        }
+        else {
+            callbackContext.error( "false" );
         }
 
         return null;
@@ -160,19 +172,6 @@ public class CameraPlus extends CordovaPlugin {
 		    }
 
         return true;
-    }
-
-    private boolean setText(CordovaArgs args, CallbackContext callbackContext) {
-        String text = args.getString(0);
-        boolean res = CameraManager.setText(text);
-        if (res) {
-            callbackContext.success( "true" );
-        }
-        else {
-            callbackContext.success( "false" );
-        }
-        
-        return null;
     }
 
 

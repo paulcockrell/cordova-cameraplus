@@ -88,6 +88,10 @@ public final class CameraManager {
         return cameraManager.previewCallback.getLastFrame();
     }
 
+    public static boolean setText(String text) {
+       return cameraManager.previewCallback.setText(text);
+    }
+
     private CameraManager(Context context) {
 
         Log.i(TAG, "Creating instance of CameraManager...");
@@ -393,10 +397,6 @@ public final class CameraManager {
          camera.setDisplayOrientation(result);
 
          return result;
-     }
-
-     public static boolean setText(String text) {
-        return cameraManager.previewCallback.setText(text);
      }
 
 }
