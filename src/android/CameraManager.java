@@ -54,7 +54,7 @@ public final class CameraManager {
 
     public static boolean DEBUG = true;
     public static String TAG = "CameraManager";
-    
+
     private static float mSecondsOfVideo;
     private static File mOutputFile;
 
@@ -107,7 +107,7 @@ public final class CameraManager {
                     break;
                 }
                 case MSG_FRAME_AVAILABLE: {
-                    activity.drawFrame();
+                    // we wont use this anymore
                     break;
                 }
                 case MSG_FILE_SAVE_COMPLETE: {
@@ -124,6 +124,18 @@ public final class CameraManager {
                     throw new RuntimeException("Unknown message " + msg.what);
             }
         }
+    }
+
+    public static void fileSaveComplete() {
+
+    }
+
+    /**
+    * The file save has completed.  We can resume recording.
+    */
+    private void fileSaveComplete(int status) {
+        Log.d(TAG, "fileSaveComplete " + status);
+        //TODO Do something?
     }
 
     public static void setDesiredPreviewSize(int width, int height) {
