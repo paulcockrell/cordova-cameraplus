@@ -70,7 +70,6 @@ public final class CameraManager {
     * blinking "recording" text.  Receives callback messages from the encoder thread.
     */
     private static class MainHandler extends Handler implements CircularEncoder.Callback {
-        Log.d(TAG, "class MainHandler");
         public static final int MSG_BLINK_TEXT = 0;
         public static final int MSG_FRAME_AVAILABLE = 1;
         public static final int MSG_FILE_SAVE_COMPLETE = 2;
