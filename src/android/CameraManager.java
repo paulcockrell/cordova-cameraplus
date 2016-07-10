@@ -54,7 +54,7 @@ public final class CameraManager {
     private static final int DESIRED_PREVIEW_FPS = 15;
 
     public static boolean DEBUG = true;
-    public static String TAG = "XXX CameraManager";
+    public static String TAG = "XXXCameraManager";
 
     private static float mSecondsOfVideo;
     private static File mOutputFile;
@@ -70,6 +70,7 @@ public final class CameraManager {
     * blinking "recording" text.  Receives callback messages from the encoder thread.
     */
     private static class MainHandler extends Handler implements CircularEncoder.Callback {
+        Log.d(TAG, "class MainHandler");
         public static final int MSG_BLINK_TEXT = 0;
         public static final int MSG_FRAME_AVAILABLE = 1;
         public static final int MSG_FILE_SAVE_COMPLETE = 2;
@@ -84,12 +85,14 @@ public final class CameraManager {
         // CircularEncoder.Callback, called on encoder thread
         @Override
         public void fileSaveComplete(int status) {
+            Log.d(TAG, "fileSaveComplete");
             sendMessage(obtainMessage(MSG_FILE_SAVE_COMPLETE, status, 0, null));
         }
 
         // CircularEncoder.Callback, called on encoder thread
         @Override
         public void bufferStatus(long totalTimeMsec) {
+            Log.d(TAG, "bufferStatus");
             sendMessage(obtainMessage(MSG_BUFFER_STATUS,
                   (int) (totalTimeMsec >> 32), (int) totalTimeMsec));
         }
@@ -112,6 +115,7 @@ public final class CameraManager {
                     break;
                 }
                 case MSG_FILE_SAVE_COMPLETE: {
+                    Log.d(TAG, "MSG_FILE_SAVE_COMPLETE");
                     activity.fileSaveComplete(msg.arg1);
                     break;
                 }
@@ -139,11 +143,13 @@ public final class CameraManager {
      * Updates the buffer status UI.
      */
     private void updateBufferStatus(long durationUsec) {
+        Log.d(TAG, "updateBufferStatus");
         mSecondsOfVideo = durationUsec / 1000000.0f;
     }
 
 
     public static void setDesiredPreviewSize(int width, int height) {
+        Log.d(TAG, "setDesiredPreviewSize");
         mDesiredWidth = width;
         mDesiredHeight = height;
     }
