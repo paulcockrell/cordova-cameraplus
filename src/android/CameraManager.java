@@ -112,20 +112,20 @@ public final class CameraManager {
                 }
                 case MSG_FRAME_AVAILABLE: {
                     Log.d(TAG, "MSG_FRAME_AVAILABLE");
-                    activity.drawFrame();
+                    // activity.drawFrame();
                     // we wont use this anymore
                     break;
                 }
                 case MSG_FILE_SAVE_COMPLETE: {
                     Log.d(TAG, "MSG_FILE_SAVE_COMPLETE");
-                    activity.fileSaveComplete(msg.arg1);
+                    //activity.fileSaveComplete(msg.arg1);
                     break;
                 }
                 case MSG_BUFFER_STATUS: {
                     long duration = (((long) msg.arg1) << 32) |
                                     (((long) msg.arg2) & 0xffffffffL);
                     Log.d(TAG, "MSG_BUFFER_STATUS: " + duration);
-                    activity.updateBufferStatus(duration);
+                    ///activity.updateBufferStatus(duration);
                     break;
                 }
                 default:
