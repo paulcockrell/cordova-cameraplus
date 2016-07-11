@@ -107,9 +107,12 @@ public final class CameraManager {
             switch (msg.what) {
                 case MSG_BLINK_TEXT: {
                     // We wont use this anymore
+                    Log.d(TAG, "MSG_BLINK_TEXT");
                     break;
                 }
                 case MSG_FRAME_AVAILABLE: {
+                    Log.d(TAG, "MSG_FRAME_AVAILABLE");
+                    activity.drawFrame();
                     // we wont use this anymore
                     break;
                 }
@@ -121,6 +124,7 @@ public final class CameraManager {
                 case MSG_BUFFER_STATUS: {
                     long duration = (((long) msg.arg1) << 32) |
                                     (((long) msg.arg2) & 0xffffffffL);
+                    Log.d(TAG, "MSG_BUFFER_STATUS: " + duration);
                     activity.updateBufferStatus(duration);
                     break;
                 }
